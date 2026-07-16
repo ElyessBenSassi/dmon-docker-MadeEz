@@ -1,0 +1,54 @@
+version: 2
+
+# Public-repo goreleaser config (standalone dmon in ElyessBenSassi/dmon-docker-MadeEz).
+# Plain semver tags (vX.Y.Z) — no monorepo prefix — so version parsing is native.
+# Runs in CI on a tag push; the release workflow provides GITHUB_TOKEN automatically.
+
+project_name: dmon
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: dmon
+    main: ./cmd/dmon
+    binary: dmon
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: dmon
+    name_template: "dmon_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    files:
+      - README.md
+
+checksum:
+  name_template: "dmon_{{ .Version }}_checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: ElyessBenSassi
+    name: dmon-docker-MadeEz
+  name_template: "dmon {{ .Version }}"
+  # Ship the installer as a release asset so `curl .../releases/.../install.sh` works.
+  extra_files:
+    - glob: ./install.sh
