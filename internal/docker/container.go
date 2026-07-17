@@ -24,6 +24,17 @@ type ContainerInfo struct {
 	Memory string  // "123.4 MB / 2.0 GB"
 	Ports  string  // "8080->80/tcp, 443->443/tcp"
 	Image  string
+
+	// Compose metadata, read from the container's labels ("" / nil when the
+	// container is not managed by Docker Compose).
+	ComposeProject    string   // com.docker.compose.project
+	ComposeService    string   // com.docker.compose.service
+	ComposeWorkingDir string   // com.docker.compose.project.working_dir
+	ComposeConfigs    []string // com.docker.compose.project.config_files, split
+
+	// InProject is set by the UI once it knows which compose project dmon is
+	// scoped to; the docker layer always leaves it false.
+	InProject bool
 }
 
 // statsJSON mirrors the Docker stats API response (snake_case JSON).
@@ -71,14 +82,18 @@ func (c *Client) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 		cpu, mem := fetchStats(ctx, c, ctr.ID, string(ctr.State))
 
 		infos = append(infos, ContainerInfo{
-			ID:     ctr.ID[:12],
-			Name:   name,
-			State:  string(ctr.State),
-			Health: health,
-			CPU:    cpu,
-			Memory: mem,
-			Ports:  formatPorts(ctr.Ports),
-			Image:  shortenImage(ctr.Image),
+			ID:                ctr.ID[:12],
+			Name:              name,
+			State:             string(ctr.State),
+			Health:            health,
+			CPU:               cpu,
+			Memory:            mem,
+			Ports:             formatPorts(ctr.Ports),
+			Image:             shortenImage(ctr.Image),
+			ComposeProject:    ctr.Labels["com.docker.compose.project"],
+			ComposeService:    ctr.Labels["com.docker.compose.service"],
+			ComposeWorkingDir: ctr.Labels["com.docker.compose.project.working_dir"],
+			ComposeConfigs:    splitConfigFiles(ctr.Labels["com.docker.compose.project.config_files"]),
 		})
 	}
 	return infos, nil
@@ -141,6 +156,21 @@ func fetchStats(ctx context.Context, c *Client, id, state string) (float64, stri
 func (c *Client) RestartContainer(ctx context.Context, id string) error {
 	timeout := int(10 * time.Second / time.Second) // 10 seconds
 	return c.cli.ContainerRestart(ctx, id, container.StopOptions{Timeout: &timeout})
+}
+
+// splitConfigFiles splits the comma-separated config_files label into a cleaned
+// list of paths, dropping empty entries. Returns nil when the label is empty.
+func splitConfigFiles(label string) []string {
+	if label == "" {
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Split(label, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // parseHealthFromStatus extracts a health keyword from the Docker status string.

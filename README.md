@@ -1,7 +1,9 @@
 # dmon — Interactive Docker Monitor
 
 A terminal UI for monitoring Docker containers and restarting them safely, with
-live CPU / memory / health metrics and one-key logs and shell access.
+live CPU / memory / health metrics and one-key logs and shell access. Run it
+anywhere to watch every container, or from a compose directory to group and
+control that project's services.
 
 ## Install
 
@@ -24,10 +26,17 @@ The installer places the binary at `~/.local/share/dmon/<version>/dmon` and link
 
 ## Usage
 
-Run from a directory containing a Docker Compose file, or point at one with `-f`:
+Run dmon anywhere to monitor every container on the host:
 
 ```bash
 dmon
+```
+
+Run it from a directory containing a Docker Compose file (or point at one with
+`-f`) and dmon groups and highlights that project's services, and enables `u` to
+bring the project up:
+
+```bash
 dmon -f /path/to/docker-compose.yml
 ```
 
@@ -37,8 +46,12 @@ dmon -f /path/to/docker-compose.yml
 | `r` | Restart selected container |
 | `l` | View logs (last 100 lines) |
 | `e` | Open a shell in the container (`bash` → `sh`) |
+| `u` | Compose up (compose project only): prompts for an optional profile, runs `docker compose up -d` |
 | `R` | Refresh now |
 | `q` | Quit |
+
+When a compose project is detected, its containers are grouped under a
+`compose · <project>` section, separate from `other containers`.
 
 ## Uninstall
 

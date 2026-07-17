@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
 	"github.com/ElyessBenSassi/devops-tools/dmon/internal/compose"
 	"github.com/ElyessBenSassi/devops-tools/dmon/internal/docker"
 	"github.com/ElyessBenSassi/devops-tools/dmon/internal/ui"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 )
 
 var version = "dev"
@@ -27,9 +27,10 @@ func newRootCmd() *cobra.Command {
 		Short: "Terminal UI for monitoring Docker containers",
 		Long: `dmon — a terminal UI for monitoring Docker containers.
 
-Run from a directory containing a docker-compose file, or supply -f to
-point at a specific compose file.`,
-		Version: version,
+Run it from anywhere to monitor every container on the host. When run from a
+directory containing a compose file (or pointed at one with -f), the services
+of that project are grouped and highlighted, and 'u' brings them up.`,
+		Version:      version,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
@@ -37,12 +38,12 @@ point at a specific compose file.`,
 				return fmt.Errorf("getting working directory: %w", err)
 			}
 
-			composeFilePath, err := compose.DetectComposeFile(composeFile, cwd)
+			// Detection is non-fatal: a nil project means "run from anywhere"
+			// and show all containers. Only an explicit -f that is missing errors.
+			project, err := compose.Detect(composeFile, cwd)
 			if err != nil {
 				return err
 			}
-
-			_ = composeFilePath // available for future filtering by project
 
 			dockerClient, err := docker.NewClient()
 			if err != nil {
@@ -50,7 +51,7 @@ point at a specific compose file.`,
 			}
 			defer dockerClient.Close()
 
-			model := ui.NewModel(dockerClient)
+			model := ui.NewModel(dockerClient, project)
 			p := tea.NewProgram(
 				model,
 				tea.WithAltScreen(),

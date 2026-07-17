@@ -75,3 +75,29 @@ func TestShortenImage(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitConfigFiles(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{"empty", "", nil},
+		{"single", "/a/docker-compose.yml", []string{"/a/docker-compose.yml"}},
+		{"multiple with spaces", "/a/compose.yml, /a/override.yml", []string{"/a/compose.yml", "/a/override.yml"}},
+		{"trailing comma", "/a/compose.yml,", []string{"/a/compose.yml"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := splitConfigFiles(tt.input)
+			if len(got) != len(tt.want) {
+				t.Fatalf("splitConfigFiles(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("splitConfigFiles(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
